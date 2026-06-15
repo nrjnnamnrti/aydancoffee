@@ -35,6 +35,12 @@
             <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="closeProductModal()"></div>
             <div class="absolute bottom-0 w-full bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 transform translate-y-full flex flex-col max-h-[90vh]" id="product-sheet">
                 <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2"></div>
+                
+                <!-- Tombol Kembali / Tutup Modal -->
+                <button onclick="closeProductModal()" class="absolute top-3 right-4 p-2 bg-gray-100 rounded-full text-gray-500 active:bg-gray-200 transition-colors z-10">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+
                 <div class="overflow-y-auto px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-2">
                     <img id="modal-img" src="" alt="Product" class="w-full aspect-square object-cover rounded-2xl mb-4 bg-gray-100 border border-gray-100">
                     <h2 id="modal-title" class="text-[24px] font-bold text-gray-900 tracking-tight leading-tight mb-1"></h2>
@@ -80,7 +86,6 @@
                         <h3 class="font-bold text-gray-900 text-[15px] mb-3 border-b border-gray-100 pb-2">Data Pemesan</h3>
                         <div class="space-y-3">
                             <input type="text" id="cust-name" placeholder="Nama Lengkap" class="w-full bg-gray-50 p-3 rounded-xl text-[14px] outline-none focus:ring-1 focus:ring-amber-500">
-                            <input type="tel" id="cust-wa" placeholder="Nomor WhatsApp (Cth: 0812...)" class="w-full bg-gray-50 p-3 rounded-xl text-[14px] outline-none focus:ring-1 focus:ring-amber-500">
                             <textarea id="cust-notes" placeholder="Catatan Pesanan (opsional)" class="w-full bg-gray-50 p-3 rounded-xl text-[14px] outline-none focus:ring-1 focus:ring-amber-500" rows="2"></textarea>
                         </div>
                     </div>
@@ -225,7 +230,16 @@
             onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     storeSettings = docSnap.data();
-                    document.getElementById('store-location').textContent = storeSettings.lokasi || 'Lokasi belum diatur admin.';
+                    
+                    const locEl = document.getElementById('store-location');
+                    if(storeSettings.lokasi) {
+                        // Ubah lokasi menjadi tautan/link yang bisa diklik
+                        locEl.innerHTML = `<a href="${storeSettings.lokasi}" target="_blank" class="text-amber-700 underline font-medium flex items-center"><i data-lucide="external-link" class="w-3.5 h-3.5 mr-1"></i> Buka Google Maps</a>`;
+                        lucide.createIcons();
+                    } else {
+                        locEl.textContent = 'Lokasi belum diatur admin.';
+                    }
+
                     if(storeSettings.qrCode) {
                         document.getElementById('cart-qr').src = storeSettings.qrCode;
                     }
@@ -402,11 +416,10 @@
             if (!currentUser || cart.length === 0) return;
 
             const custName = document.getElementById('cust-name').value.trim();
-            const custWa = document.getElementById('cust-wa').value.trim();
             const custNotes = document.getElementById('cust-notes').value.trim();
 
-            if(!custName || !custWa) {
-                showToast("Nama dan Nomor WA wajib diisi!");
+            if(!custName) {
+                showToast("Nama wajib diisi!");
                 return;
             }
 
@@ -419,7 +432,6 @@
             const orderData = {
                 userId: currentUser.uid,
                 namaCustomer: custName,
-                whatsappCustomer: custWa,
                 catatan: custNotes,
                 items: cart,
                 total: total,
@@ -432,7 +444,7 @@
                 const newOrder = await addDoc(ordersRef, orderData);
                 
                 let itemsText = cart.map(i => `- ${i.qty}x ${i.nama}`).join('\n');
-                let waMsg = `Halo Ay& Coffee,\nSaya ingin pesan:\n\n*ID Order:* ${newOrder.id.slice(0,6).toUpperCase()}\n*Nama:* ${custName}\n*No WA:* ${custWa}\n\n*Pesanan:*\n${itemsText}\n\n*Total:* ${formatIDR(total)}\n*Catatan:* ${custNotes || '-'}\n\nPembayaran via QRIS telah diproses. Berikut bukti transfernya (silakan lampirkan gambar). Mohon konfirmasi pesanan saya ya.`;
+                let waMsg = `Halo Ay& Coffee,\nSaya ingin memesan kopi berikut:\n\n*ID Order:* ${newOrder.id.slice(0,6).toUpperCase()}\n*Nama:* ${custName}\n\n*Pesanan:*\n${itemsText}\n\n*Total:* ${formatIDR(total)}\n*Catatan:* ${custNotes || '-'}\n\nBerikut saya lampirkan bukti transfer sesuai dengan total pesanan tersebut. Terima kasih.`;
                 
                 cart = [];
                 document.getElementById('cust-notes').value = '';
