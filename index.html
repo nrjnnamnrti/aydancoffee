@@ -59,6 +59,44 @@
             </div>
         </div>
 
+        <!-- Invoice Modal -->
+        <div id="invoice-modal" class="fixed inset-0 z-50 hidden">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="closeInvoiceModal()"></div>
+            <div class="absolute bottom-0 w-full bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 transform translate-y-full flex flex-col max-h-[90vh]" id="invoice-sheet">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-2"></div>
+                <div class="overflow-y-auto px-5 pb-[calc(env(safe-area-inset-bottom)+20px)] pt-2 text-center">
+                    <h2 class="text-[22px] font-bold text-gray-900 tracking-tight mb-2">Konfirmasi Pesanan</h2>
+                    <p class="text-[13px] text-gray-500 mb-4">Silakan transfer sesuai total berikut dan kirim bukti pembayarannya.</p>
+                    
+                    <div class="bg-amber-50 rounded-2xl p-4 mb-4 border border-amber-100">
+                        <div class="text-[12px] text-amber-800 font-medium mb-1">Total yang harus dibayar</div>
+                        <div id="invoice-total" class="text-[28px] font-bold text-amber-600">Rp 0</div>
+                    </div>
+
+                    <h3 class="text-[14px] font-semibold text-gray-900 mb-2">Metode Pembayaran</h3>
+                    <img id="invoice-qr" src="" alt="QRIS" class="w-[200px] h-[200px] mx-auto object-cover rounded-xl mb-4 shadow-sm border border-gray-200 hidden">
+                    
+                    <div id="invoice-transfer" class="bg-gray-50 rounded-2xl p-4 mb-6 border border-gray-100 text-left hidden">
+                        <div class="text-[12px] text-gray-500 font-medium mb-1">Transfer Rekening</div>
+                        <div class="font-bold text-gray-900 text-[15px]" id="invoice-bank">Nama Bank</div>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="font-mono text-[16px] tracking-wider text-gray-800" id="invoice-rek">-</span>
+                            <button onclick="copyRek()" class="text-amber-600 bg-amber-100 px-3 py-1.5 rounded-lg text-[12px] font-semibold active:bg-amber-200 transition-colors flex items-center">
+                                <i data-lucide="copy" class="w-3.5 h-3.5 mr-1"></i> Salin
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="confirmAndWa()" id="btn-confirm-wa" class="w-full bg-[#25D366] active:bg-[#128C7E] text-white font-semibold py-4 rounded-2xl transition-colors text-[16px] flex justify-center items-center shadow-md">
+                        <i data-lucide="message-circle" class="w-5 h-5 mr-2"></i> Kirim Bukti ke WhatsApp
+                    </button>
+                    <button onclick="closeInvoiceModal()" class="w-full mt-3 text-gray-500 font-semibold py-3 text-[14px]">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto pb-safe relative">
             <!-- Toast Notification -->
@@ -88,12 +126,6 @@
                             <input type="text" id="cust-name" placeholder="Nama Lengkap" class="w-full bg-gray-50 p-3 rounded-xl text-[14px] outline-none focus:ring-1 focus:ring-amber-500">
                             <textarea id="cust-notes" placeholder="Catatan Pesanan (opsional)" class="w-full bg-gray-50 p-3 rounded-xl text-[14px] outline-none focus:ring-1 focus:ring-amber-500" rows="2"></textarea>
                         </div>
-                    </div>
-
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4 text-center">
-                        <h3 class="font-bold text-gray-900 text-[15px] mb-2">QR Pembayaran</h3>
-                        <p class="text-[12px] text-gray-500 mb-3">Scan untuk bayar & kirim bukti via WhatsApp</p>
-                        <img id="cart-qr" src="https://placehold.co/200x200/eee/999?text=QR+Belum+Diatur" alt="QRIS" class="w-[200px] h-[200px] mx-auto object-cover rounded-xl mb-2 shadow-sm border border-gray-200">
                     </div>
 
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
@@ -182,6 +214,7 @@
         let userOrders = [];
         let storeSettings = {};
         let activeProduct = null;
+        let pendingOrderWaData = null;
 
         lucide.createIcons();
 
@@ -233,15 +266,27 @@
                     
                     const locEl = document.getElementById('store-location');
                     if(storeSettings.lokasi) {
-                        // Ubah lokasi menjadi tautan/link yang bisa diklik
                         locEl.innerHTML = `<a href="${storeSettings.lokasi}" target="_blank" class="text-amber-700 underline font-medium flex items-center"><i data-lucide="external-link" class="w-3.5 h-3.5 mr-1"></i> Buka Google Maps</a>`;
                         lucide.createIcons();
                     } else {
                         locEl.textContent = 'Lokasi belum diatur admin.';
                     }
 
+                    const qrImg = document.getElementById('invoice-qr');
                     if(storeSettings.qrCode) {
-                        document.getElementById('cart-qr').src = storeSettings.qrCode;
+                        qrImg.src = storeSettings.qrCode;
+                        qrImg.classList.remove('hidden');
+                    } else {
+                        qrImg.classList.add('hidden');
+                    }
+
+                    const transBox = document.getElementById('invoice-transfer');
+                    if(storeSettings.bank && storeSettings.rekening) {
+                        document.getElementById('invoice-bank').textContent = storeSettings.bank;
+                        document.getElementById('invoice-rek').textContent = storeSettings.rekening;
+                        transBox.classList.remove('hidden');
+                    } else {
+                        transBox.classList.add('hidden');
                     }
                 }
             });
@@ -334,6 +379,33 @@
                 modal.classList.add('hidden');
                 activeProduct = null;
             }, 300);
+        };
+
+        window.closeInvoiceModal = () => {
+            const modal = document.getElementById('invoice-modal');
+            const sheet = document.getElementById('invoice-sheet');
+            
+            sheet.classList.add('translate-y-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+            
+            switchTab('orders');
+        };
+
+        window.copyRek = () => {
+            const rek = document.getElementById('invoice-rek').textContent;
+            navigator.clipboard.writeText(rek).then(() => {
+                showToast("Nomor rekening disalin!");
+            }).catch(err => {
+                const textArea = document.createElement("textarea");
+                textArea.value = rek;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                showToast("Nomor rekening disalin!");
+            });
         };
 
         window.addActiveProductToCart = () => {
@@ -444,22 +516,20 @@
                 const newOrder = await addDoc(ordersRef, orderData);
                 
                 let itemsText = cart.map(i => `- ${i.qty}x ${i.nama}`).join('\n');
-                let waMsg = `Halo Ay& Coffee,\nSaya ingin memesan kopi berikut:\n\n*ID Order:* ${newOrder.id.slice(0,6).toUpperCase()}\n*Nama:* ${custName}\n\n*Pesanan:*\n${itemsText}\n\n*Total:* ${formatIDR(total)}\n*Catatan:* ${custNotes || '-'}\n\nBerikut saya lampirkan bukti transfer sesuai dengan total pesanan tersebut. Terima kasih.`;
+                let waMsg = `Halo Ay& Coffee,\nSaya telah membuat pesanan sesuai yang ada di keranjang aplikasi dan ingin mengirimkan bukti transfer pembayaran.\n\n*ID Order:* ${newOrder.id.slice(0,6).toUpperCase()}\n*Nama:* ${custName}\n\n*Pesanan:*\n${itemsText}\n\n*Total:* ${formatIDR(total)}\n*Catatan:* ${custNotes || '-'}\n\nBerikut saya lampirkan bukti transfer sejumlah ${formatIDR(total)}. Tolong segera diproses ya!`;
+                
+                pendingOrderWaData = waMsg;
                 
                 cart = [];
                 document.getElementById('cust-notes').value = '';
                 updateCartUI();
-                showToast("Pesanan dibuat! Membuka WA...");
-                switchTab('orders');
                 
-                setTimeout(() => {
-                    if(storeSettings && storeSettings.whatsapp) {
-                        let waNum = storeSettings.whatsapp.replace(/^0+/, '62');
-                        window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(waMsg)}`, '_blank');
-                    } else {
-                        showToast("Nomor WA Admin belum di-set.");
-                    }
-                }, 1000);
+                document.getElementById('invoice-total').textContent = formatIDR(total);
+                
+                const modal = document.getElementById('invoice-modal');
+                const sheet = document.getElementById('invoice-sheet');
+                modal.classList.remove('hidden');
+                setTimeout(() => { sheet.classList.remove('translate-y-full'); }, 10);
 
             } catch (error) {
                 showToast("Gagal memproses pesanan.");
@@ -469,6 +539,16 @@
                 lucide.createIcons();
             }
         });
+
+        window.confirmAndWa = () => {
+            if(storeSettings && storeSettings.whatsapp && pendingOrderWaData) {
+                let waNum = storeSettings.whatsapp.replace(/^0+/, '62');
+                window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(pendingOrderWaData)}`, '_blank');
+                closeInvoiceModal();
+            } else {
+                showToast("Nomor WA Admin belum diatur.");
+            }
+        };
 
         const loadOrdersData = () => {
             if (!currentUser) return;
