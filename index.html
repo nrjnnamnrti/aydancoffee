@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ay& Coffee - PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Sembunyikan scrollbar untuk tampilan seperti aplikasi asli */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { -ms-overflow-style: none; scrollbar-width: none; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f2f2f7; }
+        .app-container { max-width: 480px; margin: 0 auto; background-color: #f2f2f7; min-height: 100vh; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 85px); }
+        .ios-blur { background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .toast { transition: opacity 0.3s ease, transform 0.3s ease; }
+    </style>
+</head>
+<body class="text-gray-900 antialiased selection:bg-amber-200">
+
+    <div class="app-container flex flex-col h-screen overflow-hidden">
+        
+        <!-- Header (iOS Style) -->
+        <header class="ios-blur pt-safe border-b border-gray-200/50 sticky top-0 z-30 px-4 py-3 flex justify-between items-center">
+            <div class="w-8"></div> <!-- Spacer untuk title menengah -->
+            <h1 class="text-[17px] font-semibold tracking-tight text-black">Ay&</h1>
+            <i data-lucide="coffee" class="w-6 h-6 text-amber-600"></i>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto pb-safe relative">
+            
+            <!-- Toast Notification -->
+            <div id="toast" class="toast fixed top-20 left-1/2 transform -translate-x-1/2 ios-blur border border-gray-200/50 text-gray-800 px-5 py-2.5 rounded-full shadow-lg z-50 opacity-0 pointer-events-none text-[14px] font-medium whitespace-nowrap">
+                Pesan disini
+            </div>
+
+            <!-- VIEW: MENU -->
+            <section id="view-menu" class="block w-full">
+                <!-- Promo Banner -->
+                <div class="m-4 bg-amber-100 border border-amber-300 rounded-xl p-4 flex items-center shadow-sm">
+                    <div class="bg-amber-500 rounded-full p-2 mr-3 text-white">
+                        <i data-lucide="ticket-percent" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-amber-800 text-sm">Promo Spesial Aplikasi!</h3>
+                        <p class="text-xs text-amber-700">Pesan via aplikasi langsung disiapkan, tanpa antri.</p>
+                    </div>
+                </div>
+
+                <div class="px-4 pb-2">
+                    <h2 class="text-lg font-bold mb-3 text-gray-700">Pilih Kopi Favoritmu</h2>
+                    <div id="menu-list" class="grid grid-cols-1 gap-4">
+                        <div class="text-center py-10 text-gray-400">
+                            <i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i>
+                            Memuat menu...
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: KERANJANG -->
+            <section id="view-cart" class="hidden w-full px-4 pt-4">
+                <h2 class="text-[28px] font-bold tracking-tight text-black mb-4">Keranjang</h2>
+                <div id="cart-list" class="space-y-4 mb-6 min-h-[40vh]">
+                    <!-- Cart items will go here -->
+                    <div class="text-center py-20 text-gray-400">Keranjang kosong.</div>
+                </div>
+
+                <!-- Checkout Box -->
+                <div id="checkout-box" class="hidden bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 mx-1">
+                    <div class="flex justify-between text-[14px] mb-2 text-gray-500 font-medium">
+                        <span>Subtotal</span>
+                        <span id="cart-subtotal">Rp 0</span>
+                    </div>
+                    <div class="flex justify-between text-[17px] font-bold mb-4 text-gray-900">
+                        <span>Total Pembayaran</span>
+                        <span id="cart-total" class="text-amber-600">Rp 0</span>
+                    </div>
+                    <button id="btn-checkout" class="w-full bg-amber-600 active:bg-amber-700 text-white font-semibold py-3.5 px-4 rounded-[14px] shadow-sm transition-colors flex justify-center items-center text-[16px]">
+                        <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+                        Checkout & Bayar di Kasir
+                    </button>
+                    <p class="text-[12px] text-center text-gray-400 mt-3">Pembayaran dilakukan saat pickup pesanan.</p>
+                </div>
+            </section>
+
+            <!-- VIEW: PESANAN -->
+            <section id="view-orders" class="hidden w-full px-4 pt-4">
+                <h2 class="text-[28px] font-bold tracking-tight text-black mb-4">Pesanan Anda</h2>
+                <div id="orders-list" class="space-y-4">
+                    <!-- Orders will go here -->
+                    <div class="text-center py-20 text-gray-400">Belum ada pesanan.</div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="ios-blur border-t border-gray-200/50 fixed bottom-0 w-full max-w-[480px] pb-[calc(env(safe-area-inset-bottom)+10px)] z-20 flex justify-around items-center pt-2 px-2 shadow-none rounded-none">
+            <button onclick="switchTab('menu')" id="nav-menu" class="nav-btn flex flex-col items-center p-2 text-amber-600 transition-colors w-1/3">
+                <i data-lucide="coffee" class="w-6 h-6 mb-1 stroke-[1.5]"></i>
+                <span class="text-[10px] font-medium tracking-wide">Menu</span>
+            </button>
+            <button onclick="switchTab('cart')" id="nav-cart" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-amber-600 transition-colors relative w-1/3">
+                <div class="relative">
+                    <i data-lucide="shopping-bag" class="w-6 h-6 mb-1 stroke-[1.5]"></i>
+                    <span id="cart-badge" class="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden border-2 border-white">0</span>
+                </div>
+                <span class="text-[10px] font-medium tracking-wide">Keranjang</span>
+            </button>
+            <button onclick="switchTab('orders')" id="nav-orders" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-amber-600 transition-colors w-1/3">
+                <i data-lucide="clipboard-list" class="w-6 h-6 mb-1 stroke-[1.5]"></i>
+                <span class="text-[10px] font-medium tracking-wide">Pesanan</span>
+            </button>
+        </nav>
+    </div>
+
+    <script type="module">
+        // --- Firebase Configuration & Setup ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBBLCeuWhOiOCPV7lWfbW4eSsjwbUmb3c8",
+            authDomain: "aplikasi-coffee.firebaseapp.com",
+            projectId: "aplikasi-coffee",
+            storageBucket: "aplikasi-coffee.firebasestorage.app",
+            messagingSenderId: "847017187499",
+            appId: "1:847017187499:web:f180c9da28725d50f6ffee"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Gunakan ID statis yang sama dengan aplikasi admin
+        const sysAppId = 'ay-coffee-shared-db';
+        
+        let currentUser = null;
+        let menuItems = [];
+        let cart = [];
+        let userOrders = [];
+
+        // Inisialisasi Icons Lucide
+        lucide.createIcons();
+
+        // --- Helper Functions ---
+        const formatIDR = (number) => {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+        };
+
+        const showToast = (message) => {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.opacity = '1';
+            toast.style.transform = 'translate(-50%, 10px)';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 0)';
+            }, 3000);
+        };
+
+        window.switchTab = (tabId) => {
+            document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-amber-600');
+                btn.classList.add('text-gray-400');
+            });
+
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.remove('text-gray-400');
+            document.getElementById(`nav-${tabId}`).classList.add('text-amber-600');
+        };
+
+        // --- Firebase Auth ---
+        const initAuth = async () => {
+            try {
+                // Selalu login anonim untuk PWA kustomer agar bisa memesan
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Auth error:", error);
+                showToast("Gagal terhubung ke server.");
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                loadMenuData();
+                loadOrdersData();
+            } else {
+                currentUser = null;
+            }
+        });
+
+        // --- Data Fetching & Rendering ---
+        const loadMenuData = () => {
+            if (!currentUser) return;
+            const menuRef = collection(db, 'artifacts', sysAppId, 'public', 'data', 'menu');
+            
+            onSnapshot(menuRef, (snapshot) => {
+                menuItems = [];
+                snapshot.forEach(doc => {
+                    menuItems.push({ id: doc.id, ...doc.data() });
+                });
+                renderMenu();
+            }, (error) => {
+                console.error("Gagal memuat menu:", error);
+            });
+        };
+
+        const renderMenu = () => {
+            const menuContainer = document.getElementById('menu-list');
+            if (menuItems.length === 0) {
+                menuContainer.innerHTML = `<div class="text-center py-10 text-gray-400">Menu belum tersedia.</div>`;
+                return;
+            }
+
+            menuContainer.innerHTML = '';
+            menuItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "bg-white p-4 rounded-[20px] shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform";
+                el.innerHTML = `
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-gray-900 text-[17px] tracking-tight">${item.nama}</h3>
+                        <p class="text-[13px] text-gray-500 mb-1 mt-0.5 leading-tight">${item.deskripsi || 'Kopi nikmat khas Ay&'}</p>
+                        <span class="font-medium text-amber-600 text-[15px]">${formatIDR(item.harga)}</span>
+                    </div>
+                    <button onclick="addToCart('${item.id}')" class="bg-amber-100/50 text-amber-600 active:bg-amber-200 p-2.5 rounded-full transition-colors ml-4">
+                        <i data-lucide="plus" class="w-5 h-5 stroke-[2.5]"></i>
+                    </button>
+                `;
+                menuContainer.appendChild(el);
+            });
+            lucide.createIcons();
+        };
+
+        // --- Cart Logic ---
+        window.addToCart = (itemId) => {
+            const item = menuItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const existing = cart.find(i => i.id === itemId);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ ...item, qty: 1 });
+            }
+            
+            updateCartUI();
+            showToast(`${item.nama} ditambahkan!`);
+        };
+
+        window.updateQty = (itemId, change) => {
+            const itemIndex = cart.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                cart[itemIndex].qty += change;
+                if (cart[itemIndex].qty <= 0) {
+                    cart.splice(itemIndex, 1);
+                }
+                updateCartUI();
+            }
+        };
+
+        const updateCartUI = () => {
+            const badge = document.getElementById('cart-badge');
+            const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+            
+            if (totalQty > 0) {
+                badge.textContent = totalQty;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            const cartList = document.getElementById('cart-list');
+            const checkoutBox = document.getElementById('checkout-box');
+            
+            if (cart.length === 0) {
+                cartList.innerHTML = `<div class="text-center py-20 text-gray-400 flex flex-col items-center"><i data-lucide="shopping-cart" class="w-12 h-12 mb-3 opacity-50"></i>Keranjang Anda kosong.</div>`;
+                checkoutBox.classList.add('hidden');
+                lucide.createIcons();
+                return;
+            }
+
+            checkoutBox.classList.remove('hidden');
+            cartList.innerHTML = '';
+            let total = 0;
+
+            cart.forEach(item => {
+                const itemTotal = item.harga * item.qty;
+                total += itemTotal;
+                
+                const el = document.createElement('div');
+                el.className = "flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm mb-3 mx-1";
+                el.innerHTML = `
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-[15px] text-gray-900 tracking-tight">${item.nama}</h4>
+                        <div class="text-amber-600 font-medium text-[13px] mt-0.5">${formatIDR(item.harga)}</div>
+                    </div>
+                    <div class="flex items-center bg-gray-100/80 rounded-full p-1">
+                        <button onclick="updateQty('${item.id}', -1)" class="w-7 h-7 flex items-center justify-center text-gray-700 active:bg-gray-300 rounded-full transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                        <span class="w-6 text-center text-[15px] font-semibold">${item.qty}</span>
+                        <button onclick="updateQty('${item.id}', 1)" class="w-7 h-7 flex items-center justify-center text-gray-700 active:bg-gray-300 rounded-full transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+                cartList.appendChild(el);
+            });
+
+            document.getElementById('cart-subtotal').textContent = formatIDR(total);
+            document.getElementById('cart-total').textContent = formatIDR(total);
+            lucide.createIcons();
+        };
+
+        // --- Checkout Logic ---
+        document.getElementById('btn-checkout').addEventListener('click', async () => {
+            if (!currentUser || cart.length === 0) return;
+
+            const btn = document.getElementById('btn-checkout');
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 mr-2 animate-spin"></i> Memproses...`;
+            btn.disabled = true;
+
+            const total = cart.reduce((sum, item) => sum + (item.harga * item.qty), 0);
+            
+            const orderData = {
+                userId: currentUser.uid,
+                items: cart,
+                total: total,
+                status: 'Menunggu', // Menunggu, Diproses, Siap Diambil, Selesai
+                waktu: new Date().toISOString(),
+            };
+
+            try {
+                const ordersRef = collection(db, 'artifacts', sysAppId, 'public', 'data', 'orders');
+                await addDoc(ordersRef, orderData);
+                
+                cart = []; // Kosongkan keranjang
+                updateCartUI();
+                showToast("Pesanan berhasil dibuat!");
+                switchTab('orders'); // Pindah ke tab pesanan
+            } catch (error) {
+                console.error("Error checkout:", error);
+                showToast("Gagal memproses pesanan.");
+            } finally {
+                btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 mr-2"></i> Checkout & Bayar di Kasir`;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        });
+
+        // --- Orders Logic ---
+        const loadOrdersData = () => {
+            if (!currentUser) return;
+            const ordersRef = collection(db, 'artifacts', sysAppId, 'public', 'data', 'orders');
+            
+            onSnapshot(ordersRef, (snapshot) => {
+                // Filter di memori sesuai rule
+                userOrders = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.userId === currentUser.uid) {
+                        userOrders.push({ id: doc.id, ...data });
+                    }
+                });
+                
+                // Urutkan terbaru ke atas
+                userOrders.sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
+                renderOrders();
+            }, (error) => {
+                console.error("Gagal memuat pesanan:", error);
+            });
+        };
+
+        const renderOrders = () => {
+            const container = document.getElementById('orders-list');
+            
+            if (userOrders.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-400 flex flex-col items-center"><i data-lucide="clipboard-list" class="w-12 h-12 mb-3 opacity-50"></i>Belum ada riwayat pesanan.</div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = '';
+            userOrders.forEach(order => {
+                let statusColor = "bg-gray-100 text-gray-600";
+                let statusIcon = "clock";
+                
+                if (order.status === 'Diproses') { statusColor = "bg-blue-100 text-blue-700"; statusIcon = "chef-hat"; }
+                if (order.status === 'Siap Diambil') { statusColor = "bg-green-100 text-green-700"; statusIcon = "check-circle-2"; }
+                if (order.status === 'Selesai') { statusColor = "bg-gray-100 text-gray-500"; statusIcon = "check"; }
+
+                const d = new Date(order.waktu);
+                const timeString = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                let itemsText = order.items.map(i => `<span class="font-medium">${i.qty}x</span> ${i.nama}`).join('<br>');
+
+                const el = document.createElement('div');
+                el.className = "bg-white p-4 rounded-2xl shadow-sm mb-4 mx-1 relative overflow-hidden";
+                el.innerHTML = `
+                    <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+                        <div class="text-[13px] text-gray-500 font-medium">#${order.id.slice(0,6).toUpperCase()} • ${timeString}</div>
+                        <div class="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center ${statusColor}">
+                            <i data-lucide="${statusIcon}" class="w-3.5 h-3.5 mr-1 stroke-[2.5]"></i> ${order.status}
+                        </div>
+                    </div>
+                    <p class="text-[14px] text-gray-800 leading-relaxed mb-3">${itemsText}</p>
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-[13px] text-gray-500 font-medium">Total</span>
+                        <span class="font-bold text-[15px] text-amber-600">${formatIDR(order.total)}</span>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+            lucide.createIcons();
+        };
+
+        // Mulai aplikasi
+        initAuth();
+
+    </script>
+</body>
+</html>
